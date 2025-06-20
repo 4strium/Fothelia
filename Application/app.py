@@ -1,11 +1,15 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QSlider, QSpinBox, QPushButton, QCheckBox, QHBoxLayout, QVBoxLayout
+from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QSlider, QSpinBox, QPushButton, QCheckBox, QFileDialog
 from PyQt6.QtGui import QImage, QPixmap, QColor, qRgb, QFont, QPainter, QPen
 from PyQt6.QtCore import Qt
 import bluetooth
 import socket
 import time
 import threading
+import librosa
+import numpy as np
+import scipy
+import sounddevice as sd
 
 class MainWindow(QWidget):
   def __init__(self):
@@ -158,13 +162,24 @@ class MainWindow(QWidget):
     self.wavecolor_button.move(520,280)
     self.wavecolor_button.clicked.connect(self.activWaveColor)
 
-    self.wavecolor_button.hide()
+    self.musicsync_button = QPushButton("Music SYNC",self)
+    self.musicsync_button.setFont(QFont("Arial",15))
+    self.musicsync_button.resize(150,50)
+    self.musicsync_button.move(520,380)
+    self.musicsync_button.clicked.connect(self.playMusicSync)
+
+    self.play_message = QLabel(self)
+    self.play_message.setFont(QFont("Arial",10))
+    self.play_message.move(540,450)
+
+    self.disco_widgets = [self.wavecolor_button, self.musicsync_button, self.play_message]
+    MainWindow.hideWidgets(self.disco_widgets)
 
   def create_slidespin_control(self,name,x,y):
     label = QLabel(name,self)
     label.setFont(QFont("Helvetica", 14))
     label_width = label.sizeHint().width()
-    label.move(x + (255 - label_width)//2, y-30)  # Cnetrer par rapport à la longueur du slider
+    label.move(x + (255 - label_width)//2, y-30)  # Centrer par rapport à la longueur du slider
 
     slider = QSlider(Qt.Orientation.Horizontal, self)
     slider.setObjectName(name)
@@ -197,7 +212,7 @@ class MainWindow(QWidget):
   def switchBasic(self):
     self.updateColorInfo(qRgb(0, 0, 0))
     self.waveColor = False
-    self.wavecolor_button.hide()
+    MainWindow.hideWidgets(self.disco_widgets)
     MainWindow.showWidgets(self.checkboxes)
     self.basicMode = True
     self.update()
@@ -208,7 +223,7 @@ class MainWindow(QWidget):
       for checkbox in self.checkboxes:
         checkbox.setChecked(False)
     self.basicMode = False
-    self.wavecolor_button.show()
+    MainWindow.showWidgets(self.disco_widgets)
     self.update()
 
   def activateMode(self,checked):
@@ -306,6 +321,91 @@ class MainWindow(QWidget):
 
   def activWaveColor(self):
     self.waveColor = True
+
+  def playMusicSync(self):
+    fichier, _ = QFileDialog.getOpenFileName(
+            self,
+            "Choisir un fichier",
+            "",
+            "*.mp3"
+        )
+    if fichier:
+      self.play_message.setText(f"Lecture audio en cours...")
+      self.play_message.setStyleSheet("color: green;")
+    else:
+      self.play_message.setText("Fichier non exploitable")
+      self.play_message.setStyleSheet("color: red;")
+    self.play_message.adjustSize()
+    self.play_message.show()
+    QApplication.processEvents()
+
+    # Charger l'audio
+    y, sr = librosa.load(fichier, sr=None)
+
+    # Appliquer un filtre passe-bas pour garder les basses (< 150 Hz)
+    cutoff = 150
+    b, a = scipy.signal.butter(6, cutoff, btype='low', fs=sr)
+    y_bass = scipy.signal.filtfilt(b, a, y)
+
+    # Définir un hop_length correspondant à 100ms
+    hop_duration = 0.1  # 100 ms
+    hop_length = int(hop_duration * sr)
+
+    # Fenêtre de STFT (plus grande que hop_length pour meilleure résolution fréquentielle)
+    frame_length = 2048
+
+    # Calcul de l'enveloppe d'amplitude pour les basses
+    amplitude_env = np.abs(librosa.stft(y_bass, n_fft=frame_length, hop_length=hop_length))
+    bass_energy = np.mean(amplitude_env, axis=0)
+
+    # Axe du temps
+    times = librosa.frames_to_time(np.arange(len(bass_energy)), sr=sr, hop_length=hop_length).tolist()
+
+    # STFT sur le signal complet pour la fréquence dominante
+    S = np.abs(librosa.stft(y, n_fft=frame_length, hop_length=hop_length))
+    frequencies = librosa.fft_frequencies(sr=sr, n_fft=frame_length)
+    dominant_freqs = frequencies[np.argmax(S, axis=0)].tolist()
+
+    # Jouer le son dans un thread séparé
+    def play_audio():
+        sd.play(y, sr)
+        sd.wait()
+
+    audio_thread = threading.Thread(target=play_audio)
+    audio_thread.start()
+
+    time.sleep(1)
+
+    for index in range(len(times)):
+      self.warm_value = 0
+      if bass_energy[index]>0.8 :
+        self.updateColorInfo(qRgb(0,0,0))
+        self.cold_value = 255
+      else :
+        self.cold_value = 0
+        freq = dominant_freqs[index]
+        if 20 <= freq <= 250 :
+          # Interpolation linéaire entre rouge (20 Hz) et jaune (250 Hz)
+          ratio = (freq - 20) / (250 - 20)
+          r = int(255)
+          g = int(255 * ratio)
+          b = 0
+          self.updateColorInfo(qRgb(r, g, b))
+        elif 250 < freq <= 4000 :
+          # Interpolation linéaire entre vert (250 Hz) et cyan (4000 Hz)
+          ratio = (freq - 250) / (4000 - 250)
+          r = 0
+          g = int(255)
+          b = int(255 * ratio)
+          self.updateColorInfo(qRgb(r, g, b))
+        elif 4000 < freq <= 20000 :
+          # Interpolation linéaire entre bleu (4000 Hz) et blanc (20000 Hz)
+          ratio = (freq - 4000) / (20000 - 4000)
+          r = int(255 * ratio)
+          g = int(255 * ratio)
+          b = 255
+          self.updateColorInfo(qRgb(r, g, b))
+      time.sleep(0.1)
 
   def paintEvent(self, event):
     painter = QPainter(self)
