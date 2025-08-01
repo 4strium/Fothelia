@@ -1,9 +1,19 @@
-import sys, bluetooth, socket, time, threading, librosa, scipy
+import sys, bluetooth, socket, time, threading, librosa, scipy, os
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QSlider, QSpinBox, QPushButton, QCheckBox, QFileDialog
-from PyQt6.QtGui import QImage, QPixmap, QColor, qRgb, QFont, QPainter, QPen
+from PyQt6.QtGui import QImage, QPixmap, QColor, qRgb, QFont, QPainter, QPen, QIcon
 from PyQt6.QtCore import Qt
 import numpy as np
 import sounddevice as sd
+
+
+def resource_path(relative_path):
+  """ Get absolute path to resource, works for dev and PyInstaller """
+  try:
+    base_path = sys._MEIPASS  # PyInstaller creates this during runtime
+  except AttributeError:
+    base_path = os.path.abspath(".")
+
+  return os.path.join(base_path, relative_path)
 
 class MainWindow(QWidget):
   def __init__(self):
@@ -13,6 +23,7 @@ class MainWindow(QWidget):
   def initializeUI(self):
     self.setFixedSize(1200, 800)
     self.setWindowTitle("Fothelia Control")
+    self.setWindowIcon(QIcon(resource_path('app-icon.png')))
 
     self.hue = 0
     self.current_val = QColor()
@@ -56,6 +67,13 @@ class MainWindow(QWidget):
     self.bluetooth_message = QLabel("No device connected", self)
     self.bluetooth_message.setFont(QFont("Arial",10))
     self.bluetooth_message.move(650,40)
+
+    self.image_fothelia_label = QLabel(self)
+    pixmap = QPixmap(resource_path('app-icon.png'))
+    scaled_pixmap = pixmap.scaled(200, 200, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+    self.image_fothelia_label.setPixmap(scaled_pixmap)
+    self.image_fothelia_label.move(950, 600)
+    self.image_fothelia_label.resize(scaled_pixmap.width(), scaled_pixmap.height())
 
     styleModes = """
       QPushButton {
