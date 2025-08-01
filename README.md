@@ -4,7 +4,7 @@
   <a href="https://github.com/4strium/Fothelia/releases"><img src="https://img.shields.io/github/release/4strium/Fothelia" alt="Latest Release"></a>
   <img src="https://custom-icon-badges.demolab.com/badge/Windows-0078D6?logo=windows11&logoColor=white" alt="Windows Badge">
   <img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" alt="Linux Badge"><br/>
-  <img src="https://raw.githubusercontent.com/4strium/Fothelia/refs/heads/main/images/splash.png" alt="Fothelia logo">
+  <img src="https://raw.githubusercontent.com/4strium/Fothelia/refs/heads/main/images/splash.png" width="40%" alt="Fothelia logo">
 </p>
 
 Fothelia is an ecosystem for controlling LED strips without any internet bridge, just by **Bluetooth** connection.
@@ -18,6 +18,10 @@ You will need some parts and you're going to need to do a bit of very simple tin
 ## Building the controller device
 
 By the end your controller device should be looking like this :
+
+<p align='center'>
+  <img src="https://raw.githubusercontent.com/4strium/Fothelia/refs/heads/main/images/box.jpg" width="50%" alt="Finished box picture">
+</p>
 
 If you can print the enclosure with a 3D printer, the following CAD project files are available in the [`CAD`](https://github.com/4strium/Fothelia/tree/main/CAD) directory. The box can be big since the `Dollatek LR784 MOSFET Control Module` I am using is huge, thus it is mandatory to provide space inside.
 
