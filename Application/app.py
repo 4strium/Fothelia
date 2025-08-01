@@ -1,14 +1,8 @@
-import sys
+import sys, bluetooth, socket, time, threading, librosa, scipy
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QSlider, QSpinBox, QPushButton, QCheckBox, QFileDialog
 from PyQt6.QtGui import QImage, QPixmap, QColor, qRgb, QFont, QPainter, QPen
 from PyQt6.QtCore import Qt
-import bluetooth
-import socket
-import time
-import threading
-import librosa
 import numpy as np
-import scipy
 import sounddevice as sd
 
 class MainWindow(QWidget):
@@ -48,17 +42,18 @@ class MainWindow(QWidget):
       }                   
     """
 
-    instruction0 = QLabel("Connectez-vous à votre bandeau LED :", self)
+    instruction0 = QLabel("Connect to your LED strip :", self)
     instruction0.setFont(QFont("Arial",15))
-    instruction0.move(100,40)
+    instruction0.move(200,40)
 
-    self.connexion_button = QPushButton("Connexion",self)
+    self.connexion_button = QPushButton("Connection",self)
     self.connexion_button.setFont(QFont("Arial",15))
     self.connexion_button.resize(150,50)
     self.connexion_button.move(480,24)
     self.connexion_button.clicked.connect(self.Bluetooth_connect)
+    self.connexion_button.setCursor(Qt.CursorShape.PointingHandCursor)
 
-    self.bluetooth_message = QLabel("Aucun appareil connecté", self)
+    self.bluetooth_message = QLabel("No device connected", self)
     self.bluetooth_message.setFont(QFont("Arial",10))
     self.bluetooth_message.move(650,40)
 
@@ -76,26 +71,28 @@ class MainWindow(QWidget):
       }
     """
 
-    self.basic_mode_button = QPushButton("Mode Basique",self)
+    self.basic_mode_button = QPushButton("Basic Mode",self)
     self.basic_mode_button.setFont(QFont("Arial",15))
     self.basic_mode_button.resize(150,50)
     self.basic_mode_button.move(400,120)
     self.basic_mode_button.setStyleSheet(styleModes)
     self.basic_mode_button.clicked.connect(self.switchBasic)
+    self.basic_mode_button.setCursor(Qt.CursorShape.PointingHandCursor)
 
-    self.disco_mode_button = QPushButton("Mode Disco",self)
+    self.disco_mode_button = QPushButton("Disco Mode",self)
     self.disco_mode_button.setFont(QFont("Arial",15))
     self.disco_mode_button.resize(150,50)
     self.disco_mode_button.move(620,120)
     self.disco_mode_button.setStyleSheet(styleModes)
     self.disco_mode_button.clicked.connect(self.switchDisco)
+    self.disco_mode_button.setCursor(Qt.CursorShape.PointingHandCursor)
 
     self.ModeButtons = [self.basic_mode_button,self.disco_mode_button]
     MainWindow.hideWidgets(self.ModeButtons)
 
-    self.rgb_cb = self.create_checkbox("Mode RGB",100,200,cb_styles)
-    self.cool_white_cb = self.create_checkbox("Mode Blanc Froid",480,200,cb_styles)
-    self.warm_white_cb = self.create_checkbox("Mode Blanc Chaud",900,200,cb_styles)
+    self.rgb_cb = self.create_checkbox("RGB Mode",100,200,cb_styles)
+    self.cool_white_cb = self.create_checkbox("Cool White Mode",480,200,cb_styles)
+    self.warm_white_cb = self.create_checkbox("Warm White Mode",900,200,cb_styles)
 
     self.checkboxes = [self.rgb_cb, self.cool_white_cb, self.warm_white_cb]
 
@@ -110,13 +107,10 @@ class MainWindow(QWidget):
     self.cd_label.move(10,250)
     self.cd_label.resize(330,140)
 
-    # Create RGB sliders and spinboxes
     self.red_label, self.red_slider, self.red_spinbox = self.create_slidespin_control("Red",10,430)
     self.green_label, self.green_slider, self.green_spinbox = self.create_slidespin_control("Green",10,530)
     self.blue_label, self.blue_slider, self.blue_spinbox = self.create_slidespin_control("Blue",10,630)
 
-    # The sliders and spinboxes for each color should display the 
-    # same values and be updated at the same time
     self.red_slider.valueChanged.connect(self.updateRedSpinBox)
     self.red_spinbox.valueChanged.connect(self.updateRedSlider)
 
@@ -126,7 +120,6 @@ class MainWindow(QWidget):
     self.blue_slider.valueChanged.connect(self.updateBlueSpinBox)
     self.blue_spinbox.valueChanged.connect(self.updateBlueSlider)
 
-    # Cold and Warm sliders :
     self.cold_label, self.cold_slider, self.cold_spinbox = self.create_slidespin_control("Cold White",410,430)
     self.warm_label, self.warm_slider, self.warm_spinbox = self.create_slidespin_control("Warm White",830,430)
 
@@ -161,16 +154,18 @@ class MainWindow(QWidget):
     self.wavecolor_button.resize(150,50)
     self.wavecolor_button.move(520,280)
     self.wavecolor_button.clicked.connect(self.activWaveColor)
+    self.wavecolor_button.setCursor(Qt.CursorShape.PointingHandCursor)
 
     self.musicsync_button = QPushButton("Music SYNC",self)
     self.musicsync_button.setFont(QFont("Arial",15))
     self.musicsync_button.resize(150,50)
     self.musicsync_button.move(520,380)
     self.musicsync_button.clicked.connect(self.playMusicSync)
+    self.musicsync_button.setCursor(Qt.CursorShape.PointingHandCursor)
 
     self.play_message = QLabel(self)
     self.play_message.setFont(QFont("Arial",10))
-    self.play_message.move(540,450)
+    self.play_message.move(550,450)
 
     self.disco_widgets = [self.wavecolor_button, self.musicsync_button, self.play_message]
     MainWindow.hideWidgets(self.disco_widgets)
@@ -186,10 +181,14 @@ class MainWindow(QWidget):
     slider.setMaximum(255)
     slider.resize(255,20)
     slider.move(x,y)
+    slider.setCursor(Qt.CursorShape.OpenHandCursor)
+    slider.sliderPressed.connect(lambda: slider.setCursor(Qt.CursorShape.ClosedHandCursor))
+    slider.sliderReleased.connect(lambda: slider.setCursor(Qt.CursorShape.OpenHandCursor))
 
     spinbox = QSpinBox(self)
     spinbox.setMaximum(255)
     spinbox.move(x+260,y-5)
+    spinbox.setCursor(Qt.CursorShape.PointingHandCursor)
 
     return label,slider,spinbox
   
@@ -199,6 +198,7 @@ class MainWindow(QWidget):
     checkbox.move(x,y)
     checkbox.setStyleSheet(stylesheet)
     checkbox.toggled.connect(self.activateMode)
+    checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
 
     return checkbox
 
@@ -223,72 +223,71 @@ class MainWindow(QWidget):
       for checkbox in self.checkboxes:
         checkbox.setChecked(False)
     self.basicMode = False
+    self.waveColor = False
     MainWindow.showWidgets(self.disco_widgets)
     self.update()
 
   def activateMode(self,checked):
     sender = self.sender()
-    if checked and sender.text()=="Mode RGB" :
+    if checked and sender.text()=="RGB Mode" :
       MainWindow.showWidgets(self.color_controls)
       self.updateColorInfo(self.stockage_color)
       self.cool_white_cb.setChecked(False)
       self.warm_white_cb.setChecked(False)
-    elif sender.text()=="Mode RGB" :
+    elif sender.text()=="RGB Mode" :
       MainWindow.hideWidgets(self.color_controls)
       self.stockage_color = self.current_val
       self.updateColorInfo(qRgb(0, 0, 0))
-    elif checked and sender.text()=="Mode Blanc Froid":
+    elif checked and sender.text()=="Cool White Mode":
       MainWindow.showWidgets(self.cold_controls)
       self.cold_value = self.stockage_cold
       self.rgb_cb.setChecked(False)
       self.warm_white_cb.setChecked(False)
-    elif sender.text()=="Mode Blanc Froid":
+    elif sender.text()=="Cool White Mode":
       MainWindow.hideWidgets(self.cold_controls)
       self.stockage_cold = self.cold_value
       self.cold_value = 0
-    elif checked and sender.text()=="Mode Blanc Chaud":
+    elif checked and sender.text()=="Warm White Mode":
       MainWindow.showWidgets(self.warm_controls)
       self.warm_value = self.stockage_warm
       self.rgb_cb.setChecked(False)
       self.cool_white_cb.setChecked(False)
-    elif sender.text()=="Mode Blanc Chaud":
+    elif sender.text()=="Warm White Mode":
       MainWindow.hideWidgets(self.warm_controls)
       self.stockage_warm = self.warm_value
       self.warm_value = 0
 
-  # The following slots update the red, green and blue
-  # sliders and spinboxes
   def updateRedSpinBox(self, value):
-      self.red_spinbox.setValue(value)
-      self.redValue(value)
+    self.red_spinbox.setValue(value)
+    self.redValue(value)
       
   def updateRedSlider(self, value):
-      self.red_slider.setValue(value)
-      self.redValue(value)
+    self.red_slider.setValue(value)
+    self.redValue(value)
 
   def updateGreenSpinBox(self, value):
-      self.green_spinbox.setValue(value)
-      self.greenValue(value)
+    self.green_spinbox.setValue(value)
+    self.greenValue(value)
       
   def updateGreenSlider(self, value):
-      self.green_slider.setValue(value)
-      self.greenValue(value)
+    self.green_slider.setValue(value)
+    self.greenValue(value)
 
   def updateBlueSpinBox(self, value):
-      self.blue_spinbox.setValue(value)
-      self.blueValue(value)
+    self.blue_spinbox.setValue(value)
+    self.blueValue(value)
       
   def updateBlueSlider(self, value):
-      self.blue_slider.setValue(value)
-      self.blueValue(value)
+    self.blue_slider.setValue(value)
+    self.blueValue(value)
 
   def updateColdSpinBox(self, value):
-      self.cold_spinbox.setValue(value)
-      self.cold_value = value
+    self.cold_spinbox.setValue(value)
+    self.cold_value = value
       
   def updateColdSlider(self, value):
-      self.cold_slider.setValue(value)
-      self.cold_value = value
+    self.cold_slider.setValue(value)
+    self.cold_value = value
 
   def updateWarmSpinBox(self, value):
     self.warm_spinbox.setValue(value)
@@ -298,7 +297,6 @@ class MainWindow(QWidget):
     self.warm_slider.setValue(value)
     self.warm_value = value
 
-  # Create new colors based upon the changes to the RGB values
   def redValue(self, value):
     new_color = qRgb(value, self.current_val.green(), self.current_val.blue())
     self.updateColorInfo(new_color)
@@ -323,89 +321,89 @@ class MainWindow(QWidget):
     self.waveColor = True
 
   def playMusicSync(self):
+    self.waveColor = False
     fichier, _ = QFileDialog.getOpenFileName(
             self,
-            "Choisir un fichier",
+            "Choose a file",
             "",
             "*.mp3"
         )
     if fichier:
-      self.play_message.setText(f"Lecture audio en cours...")
+      self.play_message.setText(f"Audio playing...")
       self.play_message.setStyleSheet("color: green;")
     else:
-      self.play_message.setText("Fichier non exploitable")
+      self.play_message.setText("File not usable")
       self.play_message.setStyleSheet("color: red;")
     self.play_message.adjustSize()
     self.play_message.show()
     QApplication.processEvents()
 
-    # Charger l'audio
-    y, sr = librosa.load(fichier, sr=None)
+    if fichier :
+      # Charger l'audio
+      y, sr = librosa.load(fichier, sr=None)
 
-    # Appliquer un filtre passe-bas pour garder les basses (< 150 Hz)
-    cutoff = 150
-    b, a = scipy.signal.butter(6, cutoff, btype='low', fs=sr)
-    y_bass = scipy.signal.filtfilt(b, a, y)
+      # Appliquer un filtre passe-bas pour garder les basses (< 150 Hz)
+      cutoff = 150
+      b, a = scipy.signal.butter(6, cutoff, btype='low', fs=sr)
+      y_bass = scipy.signal.filtfilt(b, a, y)
 
-    # Définir un hop_length correspondant à 100ms
-    hop_duration = 0.1  # 100 ms
-    hop_length = int(hop_duration * sr)
+      # Définir un hop_length correspondant à 100ms
+      hop_duration = 0.1
+      hop_length = int(hop_duration * sr)
 
-    # Fenêtre de STFT (plus grande que hop_length pour meilleure résolution fréquentielle)
-    frame_length = 2048
+      # Fenêtre de STFT (plus grande que hop_length pour meilleure résolution fréquentielle)
+      frame_length = 2048
 
-    # Calcul de l'enveloppe d'amplitude pour les basses
-    amplitude_env = np.abs(librosa.stft(y_bass, n_fft=frame_length, hop_length=hop_length))
-    bass_energy = np.mean(amplitude_env, axis=0)
+      # Calcul de l'enveloppe d'amplitude pour les basses
+      amplitude_env = np.abs(librosa.stft(y_bass, n_fft=frame_length, hop_length=hop_length))
+      bass_energy = np.mean(amplitude_env, axis=0)
 
-    # Axe du temps
-    times = librosa.frames_to_time(np.arange(len(bass_energy)), sr=sr, hop_length=hop_length).tolist()
+      times = librosa.frames_to_time(np.arange(len(bass_energy)), sr=sr, hop_length=hop_length).tolist()
 
-    # STFT sur le signal complet pour la fréquence dominante
-    S = np.abs(librosa.stft(y, n_fft=frame_length, hop_length=hop_length))
-    frequencies = librosa.fft_frequencies(sr=sr, n_fft=frame_length)
-    dominant_freqs = frequencies[np.argmax(S, axis=0)].tolist()
+      # STFT sur le signal complet pour la fréquence dominante
+      S = np.abs(librosa.stft(y, n_fft=frame_length, hop_length=hop_length))
+      frequencies = librosa.fft_frequencies(sr=sr, n_fft=frame_length)
+      dominant_freqs = frequencies[np.argmax(S, axis=0)].tolist()
 
-    # Jouer le son dans un thread séparé
-    def play_audio():
+      def play_audio():
         sd.play(y, sr)
         sd.wait()
 
-    audio_thread = threading.Thread(target=play_audio)
-    audio_thread.start()
+      audio_thread = threading.Thread(target=play_audio)
+      audio_thread.start()
 
-    time.sleep(1)
+      for index in range(len(times)):
+        self.warm_value = 0
+        if bass_energy[index]>0.8 :
+          self.updateColorInfo(qRgb(0,0,0))
+          self.cold_value = 255
+        else :
+          self.cold_value = 0
+          freq = dominant_freqs[index]
+          if 20 <= freq <= 250 :
+            # Interpolation linéaire entre rouge (20 Hz) et jaune (250 Hz)
+            ratio = (freq - 20) / (250 - 20)
+            r = int(255)
+            g = int(255 * ratio)
+            b = 0
+            self.updateColorInfo(qRgb(r, g, b))
+          elif 250 < freq <= 4000 :
+            # Interpolation linéaire entre vert (250 Hz) et cyan (4000 Hz)
+            ratio = (freq - 250) / (4000 - 250)
+            r = 0
+            g = int(255)
+            b = int(255 * ratio)
+            self.updateColorInfo(qRgb(r, g, b))
+          elif 4000 < freq <= 20000 :
+            # Interpolation linéaire entre bleu (4000 Hz) et blanc (20000 Hz)
+            ratio = (freq - 4000) / (20000 - 4000)
+            r = int(255 * ratio)
+            g = int(255 * ratio)
+            b = 255
+            self.updateColorInfo(qRgb(r, g, b))
+        time.sleep(0.1)
 
-    for index in range(len(times)):
-      self.warm_value = 0
-      if bass_energy[index]>0.8 :
-        self.updateColorInfo(qRgb(0,0,0))
-        self.cold_value = 255
-      else :
-        self.cold_value = 0
-        freq = dominant_freqs[index]
-        if 20 <= freq <= 250 :
-          # Interpolation linéaire entre rouge (20 Hz) et jaune (250 Hz)
-          ratio = (freq - 20) / (250 - 20)
-          r = int(255)
-          g = int(255 * ratio)
-          b = 0
-          self.updateColorInfo(qRgb(r, g, b))
-        elif 250 < freq <= 4000 :
-          # Interpolation linéaire entre vert (250 Hz) et cyan (4000 Hz)
-          ratio = (freq - 250) / (4000 - 250)
-          r = 0
-          g = int(255)
-          b = int(255 * ratio)
-          self.updateColorInfo(qRgb(r, g, b))
-        elif 4000 < freq <= 20000 :
-          # Interpolation linéaire entre bleu (4000 Hz) et blanc (20000 Hz)
-          ratio = (freq - 4000) / (20000 - 4000)
-          r = int(255 * ratio)
-          g = int(255 * ratio)
-          b = 255
-          self.updateColorInfo(qRgb(r, g, b))
-      time.sleep(0.1)
+      self.play_message.setText("")
 
   def paintEvent(self, event):
     painter = QPainter(self)
@@ -453,7 +451,7 @@ class MainWindow(QWidget):
       try :
         self.socket_b.send(bytes("S"+str(frame), 'UTF-16'))
       except ConnectionAbortedError :
-        self.updateBluemessage("Appareil déconnecté", 'red')
+        self.updateBluemessage("Device disconnected", 'red')
         self.connexion = False
       time.sleep(0.1)
 
@@ -469,7 +467,7 @@ class MainWindow(QWidget):
     target_name = "LEDstrip"
     target_address = None
 
-    self.updateBluemessage("Recherche de l'appareil...", 'orange')
+    self.updateBluemessage("Device search...", 'orange')
 
     nearby_devices = bluetooth.discover_devices(lookup_names=True, lookup_class=True)
     for btaddr, btname, btclass in nearby_devices:
@@ -477,14 +475,14 @@ class MainWindow(QWidget):
         target_address = btaddr
         break
     if target_address is not None:
-      self.updateBluemessage(f"Appareil compatible trouvé avec l'adresse MAC : {target_address}", 'green')
+      self.updateBluemessage(f"Compatible device found with MAC address : {target_address}", 'green')
       serverMACAddress = target_address
       port = 1
       self.socket_b = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
       try :
         self.socket_b.connect((serverMACAddress,port))
       except :
-        self.updateBluemessage("Connexion impossible, vérifiez que l'appareil est en état de marche", 'red')
+        self.updateBluemessage("Unable to connect, check that the device is in working order", 'red')
         return
       
       self.connexion = True
@@ -492,7 +490,7 @@ class MainWindow(QWidget):
       self.loop_thread = threading.Thread(target=self.loopData, daemon=True)
       self.loop_thread.start()
     else:
-      self.updateBluemessage("Aucun appareil trouvé à proximité.", 'red')
+      self.updateBluemessage("No suitable device found nearby", 'red')
 
 if __name__ == "__main__":
   app = QApplication(sys.argv)
