@@ -12,7 +12,7 @@ class MainWindow(QWidget):
 
   def initializeUI(self):
     self.setFixedSize(1200, 800)
-    self.setWindowTitle("LEDstrip Control")
+    self.setWindowTitle("Fothelia Control")
 
     self.hue = 0
     self.current_val = QColor()
