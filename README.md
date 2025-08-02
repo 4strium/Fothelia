@@ -25,7 +25,7 @@ By the end your controller device should be looking like this :
 
 If you can print the enclosure with a 3D printer, the following CAD project files are available in the [`CAD`](https://github.com/4strium/Fothelia/tree/main/CAD) directory. The box can be big since the `Dollatek LR784 MOSFET Control Module` I am using is huge, thus it is mandatory to provide space inside.
 
-By the way, why use this type of MOSFET and not just cheap MOSFETs? The reason is simple: **Input voltage of LED strip**, on my side I am using a regular Philips HUE led strip but in fact this led strip works with an input voltage of **24V**, so we need a transistor capable of managing this amount of voltage (typically used in industry), and not the type of MOSFET used in low-voltage electronic circuits.
+By the way, why use this type of MOSFET and not just cheap MOSFETs? The reason is simple: **Input voltage of LED strip**. On my side I am using a regular Philips HUE led strip but in fact this led strip works with an input voltage of **24V**, so we need a transistor capable of managing this amount of voltage (typically used in industry), and not the type of MOSFET used in low-voltage electronic circuits.
 
 ### Alimentation
 
